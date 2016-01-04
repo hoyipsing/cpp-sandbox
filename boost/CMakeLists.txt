@@ -1,23 +1,19 @@
-find_package(Boost 1.53.0 REQUIRED COMPONENTS system log)
+find_package(Boost 1.53.0 REQUIRED COMPONENTS system)
 
-message(STATUS ${Boost_LIBRARIES})
-message(STATUS ${Boost_SYSTEM_LIBRARY})
-message(STATUS ${Boost_LOG_LIBRARY})
-
-add_executable(BoostLogTest BoostLogTest.cpp)
-target_include_directories(BoostLogTest PRIVATE
-    ${GTEST_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-    )
-target_link_libraries(BoostLogTest PRIVATE
-     ${GTEST_BOTH_LIBRARIES}
-     ${CMAKE_THREAD_LIBS_INIT}
-     ${Boost_LOG_LIBRARY}
-     )
-target_compile_features(BoostLogTest PRIVATE
-    cxx_constexpr)
-target_compile_definitions(BoostLogTest PRIVATE
-    BOOST_LOG_DYN_LINK)
+#add_executable(BoostLogTest BoostLogTest.cpp)
+#target_include_directories(BoostLogTest PRIVATE
+#    ${GTEST_INCLUDE_DIRS}
+#    ${Boost_INCLUDE_DIRS}
+#    )
+#target_link_libraries(BoostLogTest PRIVATE
+#     ${GTEST_BOTH_LIBRARIES}
+#     ${CMAKE_THREAD_LIBS_INIT}
+#     ${Boost_LOG_LIBRARY}
+#     )
+#target_compile_features(BoostLogTest PRIVATE
+#    cxx_constexpr)
+#target_compile_definitions(BoostLogTest PRIVATE
+#    BOOST_LOG_DYN_LINK)
     
 add_executable(EventfdTest EventfdTest.cpp)
 target_include_directories(EventfdTest PRIVATE

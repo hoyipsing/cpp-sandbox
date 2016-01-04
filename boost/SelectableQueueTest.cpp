@@ -1,13 +1,15 @@
 
+#include <sys/eventfd.h>
 #include "boost/asio.hpp"
 #include "boost/lockfree/queue.hpp"
-#include "boost/log/trivial.hpp"
 #include "gtest/gtest.h"
 #include <functional>
 #include <thread>
 
 using boost::asio::io_service;
 using boost::lockfree::queue;
+using std::clog;
+using std::endl;
 
 class MessageConsumer : boost::noncopyable {
 public:
@@ -26,11 +28,11 @@ public:
 			++m_msgCnt;
 			if (result == m_terminateValue) {
 				// Last message received
-				BOOST_LOG_TRIVIAL(info) << "Totally receive " << m_msgCnt << " messages";
+				clog << "[" << std::this_thread::get_id() << "] " << "Totally receive " << m_msgCnt << " messages" << endl;;
 				m_work.~work();
 			}
 		} else {
-			BOOST_LOG_TRIVIAL(warning) << "No message received from queue";
+			clog << "[" << std::this_thread::get_id() << "] " << "No message received from queue" << endl;
 		}
 	}
 
@@ -54,11 +56,11 @@ public:
 			int eventfd):
 			m_ioService(ioService),
 			m_queue(queue),
-			m_msgCnt(0),
 			m_terminateValue(terminateValue),
-			m_recvBuffer(0),
 			m_eventHandle(eventfd),
-			m_eventfdSocket(ioService, eventfd) {
+			m_eventfdSocket(ioService, eventfd),
+			m_msgCnt(0),
+			m_recvBuffer(0) {
 	}
 
 	~EventfdMessageConsumer() {
@@ -70,13 +72,13 @@ public:
 			if (m_queue.pop(result)) {
 				++m_msgCnt;
 			} else {
-				BOOST_LOG_TRIVIAL(warning) << "No message received from queue";
+				clog << "[" << std::this_thread::get_id() << "] " << "No message received from queue" << endl;
 				break;
 			}
 		}
 		if (result == m_terminateValue) {
 			// Last message received
-			BOOST_LOG_TRIVIAL(info) << "Totally receive " << m_msgCnt << " messages";
+			clog << "[" << std::this_thread::get_id() << "] " << "Totally receive " << m_msgCnt << " messages" << endl;
 		} else {
 			registerEventCallback();
 		}
@@ -84,10 +86,10 @@ public:
 
 	void onEvent(boost::system::error_code ec, std::size_t received) {
 		if (!ec) {
-//			BOOST_LOG_TRIVIAL(trace) << "Receive " << received << " bytes" << ", eventCnt=" << m_msgCnt;
+//			clog << "[" << std::this_thread::get_id() << "] " << "Receive " << received << " bytes" << ", eventCnt=" << m_msgCnt << endl;
 			messageAvailable(m_recvBuffer);
 		} else {
-			BOOST_LOG_TRIVIAL(fatal) << "Receive error code";
+		    clog << "[" << std::this_thread::get_id() << "] " << "Receive error code" << endl;
 		}
 	}
 
@@ -140,7 +142,7 @@ public:
 				);
 				++cnt;
 			} else {
-				BOOST_LOG_TRIVIAL(fatal) << "Failed to publish item to queue";
+				clog << "[" << std::this_thread::get_id() << "] " << "Failed to publish item to queue" << endl;;
 			}
 		}
 		m_queue.push(m_terminateValue);
@@ -148,7 +150,7 @@ public:
 			std::bind(&MessageConsumer::messageAvailable, std::ref(m_messageConsumer))
 		);
 		++cnt;
-		BOOST_LOG_TRIVIAL(info) << "Published " << cnt << " messages to queue";
+		clog << "[" << std::this_thread::get_id() << "] " << "Published " << cnt << " messages to queue" << endl;
 	}
 
 private:
@@ -169,10 +171,10 @@ public:
 			m_ioService(ioService),
 			m_numOfMsgToPublish(numOfMsgToPublish),
 			m_queue(queue),
-			m_progress(0),
 			m_terminateValue(terminateValue),
 			m_eventHandle(eventfd),
 			m_eventfdSocket(ioService, eventfd),
+			m_progress(0),
 			m_eventBuffer(1) {
 	}
 
@@ -181,7 +183,7 @@ public:
 			++m_progress;
 			sendOne();
 		} else {
-			BOOST_LOG_TRIVIAL(fatal) << "Send event error";
+			clog << "[" << std::this_thread::get_id() << "] " << "Send event error" << endl;
 		}
 	}
 
@@ -190,13 +192,13 @@ public:
 			if (m_queue.push(m_progress)) {
 				notifyDownStream();
 			} else {
-				BOOST_LOG_TRIVIAL(fatal) << "Failed to publish item to queue";
+				clog << "[" << std::this_thread::get_id() << "] " << "Failed to publish item to queue" << endl;
 			}
 		} else if (m_progress == m_numOfMsgToPublish) {
 			if (m_queue.push(m_terminateValue)) {
 				notifyDownStream();
 			} else {
-				BOOST_LOG_TRIVIAL(fatal) << "Failed to publish item to queue";
+				clog << "[" << std::this_thread::get_id() << "] " << "Failed to publish item to queue" << endl;
 			}
 		}
 	}
@@ -204,17 +206,17 @@ public:
 	void start() {
 		sendOne();
 		m_ioService.run();
-		BOOST_LOG_TRIVIAL(info) << "Published " << m_progress << " messages to queue";
+		clog << "[" << std::this_thread::get_id() << "] " << "Published " << m_progress << " messages to queue";
 	}
 
 private:
 	io_service& m_ioService;
-	uint32_t m_progress;
 	uint32_t m_numOfMsgToPublish;
 	queue<int32_t>& m_queue;
 	int32_t m_terminateValue;
 	int m_eventHandle;
 	boost::asio::posix::stream_descriptor m_eventfdSocket;
+	uint32_t m_progress;
 	uint64_t m_eventBuffer;
 
 	void notifyDownStream() {

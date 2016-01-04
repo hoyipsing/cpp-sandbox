@@ -11,10 +11,11 @@
 #include <functional>
 #include <thread>
 #include "boost/asio.hpp"
-#include "boost/log/trivial.hpp"
 #include "gtest/gtest.h"
 
 using boost::asio::io_service;
+using std::clog;
+using std::endl;
 //using boost::asio::posix;
 
 class EventSender {
@@ -33,11 +34,11 @@ public:
 		while (m_deliverCnt < m_numOfEventToDeliver) {
 			ssize_t result = write(m_eventHandle, &one, sizeof(uint64_t));
 			if (result == -1) {
-				BOOST_LOG_TRIVIAL(fatal) << "write() return -1";
+			    clog << "[" << std::this_thread::get_id() << "] " << "write() return -1" << endl;
 				break;
 			}
 			++m_deliverCnt;
-			BOOST_LOG_TRIVIAL(info) << "Sent " << m_deliverCnt << " events";
+			clog << "[" << std::this_thread::get_id() << "] " << "Sent " << m_deliverCnt << " events" << endl;
 			std::this_thread::sleep_for(m_eventInterval);
 		}
 	}
@@ -59,10 +60,10 @@ public:
 	void onEvent(boost::system::error_code ec, std::size_t received) {
 		if (!ec) {
 			++m_eventCnt;
-			BOOST_LOG_TRIVIAL(info) << "Receive " << received << " bytes" << ", eventCnt=" << m_eventCnt;
+			clog << "[" << std::this_thread::get_id() << "] " << "Receive " << received << " bytes" << ", eventCnt=" << m_eventCnt << endl;
 			registerEventCallback();
 		} else {
-			BOOST_LOG_TRIVIAL(fatal) << "Receive error code";
+		    clog << "[" << std::this_thread::get_id() << "] " << "Receive error code" << endl;
 		}
 	}
 
